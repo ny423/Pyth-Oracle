@@ -34,7 +34,20 @@ contract OracleLP is ERC20 {
         quoteToken = ERC20(_quoteToken);
     }
 
-    function calculatePoolCurrentTotalValue() public view returns (uint) {
+    function getCurrentPrices() public payable returns (uint, uint) {
+        PythStructs.Price memory currentBasePrice = pyth.getPrice(
+            baseTokenPriceId
+        );
+        PythStructs.Price memory currentQuotePrice = pyth.getPrice(
+            quoteTokenPriceId
+        );
+
+        uint256 basePrice = convertToUint(currentBasePrice, 18);
+        uint256 quotePrice = convertToUint(currentQuotePrice, 18);
+        return (basePrice, quotePrice);
+    }
+
+    function getPoolCurrentTotalValue() public view returns (uint) {
         uint256 basePrice = convertToUint(pyth.getPrice(baseTokenPriceId), 18);
         uint256 quotePrice = convertToUint(
             pyth.getPrice(quoteTokenPriceId),
@@ -44,7 +57,6 @@ contract OracleLP is ERC20 {
     }
 
     // * size: amount of target token
-    // e.g. (true, 10) => give 10 base token, get 10 * baseTokenPrice LP Token
     function deposit(bool isBase, uint size) external returns (uint) {
         require(size > MIN_DEPOSIT_SIZE, "OracleLP: INSUFFICIENT DEPOSIT SIZE");
         if (isBase)
@@ -57,77 +69,65 @@ contract OracleLP is ERC20 {
                 quoteToken.transferFrom(msg.sender, address(this), size),
                 "OracleLP: TRANSFER TOKEN FAILURE"
             );
-        uint256 currentPrice; // getting current price of token
-        if (isBase)
-            currentPrice = convertToUint(pyth.getPrice(baseTokenPriceId), 18);
-        else currentPrice = convertToUint(pyth.getPrice(quoteTokenPriceId), 18);
+        (uint basePrice, uint quotePrice) = getCurrentPrices();
 
-        uint deltaK = currentPrice * size;
+        uint256 currentPrice; // getting current price of token
+        if (isBase) currentPrice = basePrice;
+        else currentPrice = quotePrice;
+
+        uint totalValue = currentPrice * size;
         if (empty) {
-            _mint(msg.sender, deltaK);
+            mint(msg.sender, totalValue);
         } else {
-            _mint(
+            mint(
                 msg.sender,
-                (totalSupply() * deltaK) /
-                    (calculatePoolCurrentTotalValue() + deltaK)
+                (totalSupply() * totalValue) / (getPoolCurrentTotalValue())
             );
         }
-        return deltaK;
+        return totalValue;
     }
 
     // * size amount of LP token
-    // e.g. (true, 10) => give 10 LP token, get (10 / baseTokenPrice) base token
     function withdraw(bool isBase, uint size) external returns (uint) {
-        // require();
-        uint256 basePrice = convertToUint(pyth.getPrice(baseTokenPriceId), 18);
-        uint256 quotePrice = convertToUint(
-            pyth.getPrice(quoteTokenPriceId),
-            18
-        );
+        (uint basePrice, uint quotePrice) = getCurrentPrices();
         uint256 returnAmount;
-        uint256 burnAmount;
         if (isBase) {
             returnAmount =
-                ((size / totalSupply()) * calculatePoolCurrentTotalValue()) /
+                ((size / totalSupply()) * getPoolCurrentTotalValue()) /
                 basePrice;
             if (returnAmount > baseBalance()) {
                 returnAmount = baseBalance();
+                size =
+                    (returnAmount * totalSupply() * basePrice) /
+                    getPoolCurrentTotalValue();
             }
-            // TODO: transfer return amount of base token to withdrawer
-            // TODO: burn corresponsing amount of LP token
+            // transfer return amount of base token to withdrawer
+            // burn corresponsing amount of LP token
+            burn(msg.sender, size);
+            baseToken.transferFrom(address(this), msg.sender, returnAmount);
         } else {
             returnAmount =
-                ((size / totalSupply()) * calculatePoolCurrentTotalValue()) /
+                ((size / totalSupply()) * getPoolCurrentTotalValue()) /
                 quotePrice;
             if (returnAmount > quoteBalance()) {
                 returnAmount = quoteBalance();
+                size =
+                    (returnAmount * totalSupply() * quotePrice) /
+                    getPoolCurrentTotalValue();
             }
-            // TODO: transfer return amount of quote token to withdrawer
-            // TODO: burn corresponsing amount of LP token
-            return returnAmount;
+            // transfer return amount of quote token to withdrawer
+            // burn corresponsing amount of LP token
+            burn(msg.sender, size);
+            quoteToken.transferFrom(address(this), msg.sender, returnAmount);
         }
+        if (getPoolCurrentTotalValue() == 0) {
+            empty = true;
+        }
+        return returnAmount;
     }
 
-    function swap(
-        bool isBuy,
-        uint size,
-        bytes[] calldata pythUpdateData
-    ) external {
-        uint updateFee = pyth.getUpdateFee(pythUpdateData);
-        pyth.updatePriceFeeds{value: updateFee}(pythUpdateData);
-
-        PythStructs.Price memory currentBasePrice = pyth.getPrice(
-            baseTokenPriceId
-        );
-        PythStructs.Price memory currentQuotePrice = pyth.getPrice(
-            quoteTokenPriceId
-        );
-
-        // Note: this code does all arithmetic with 18 decimal points. This approach should be fine for most
-        // price feeds, which typically have ~8 decimals. You can check the exponent on the price feed to ensure
-        // this doesn't lose precision.
-        uint256 basePrice = convertToUint(currentBasePrice, 18);
-        uint256 quotePrice = convertToUint(currentQuotePrice, 18);
+    function swap(bool isBuy, uint size) external {
+        (uint basePrice, uint quotePrice) = getCurrentPrices();
 
         // This computation loses precision. The infinite-precision result is between [quoteSize, quoteSize + 1]
         // We need to round this result in favor of the contract.
@@ -140,10 +140,10 @@ contract OracleLP is ERC20 {
             quoteSize += 1;
 
             quoteToken.transferFrom(msg.sender, address(this), quoteSize);
-            baseToken.transfer(msg.sender, size);
+            baseToken.transfer(msg.sender, (size * 997) / 1000); // * 0.997 for 0.003 charged for fee
         } else {
             baseToken.transferFrom(msg.sender, address(this), size);
-            quoteToken.transfer(msg.sender, quoteSize);
+            quoteToken.transfer(msg.sender, (quoteSize * 997) / 1000);
         }
     }
 
@@ -198,6 +198,14 @@ contract OracleLP is ERC20 {
         quoteTokenPriceId = _quoteTokenPriceId;
         baseToken = ERC20(_baseToken);
         quoteToken = ERC20(_quoteToken);
+    }
+
+    function mint(address account, uint amount) internal {
+        _mint(account, amount);
+    }
+
+    function burn(address account, uint amount) internal {
+        _burn(account, amount);
     }
 
     receive() external payable {}
