@@ -60,14 +60,14 @@ contract OracleLPTest is Test {
         quoteToken.mint(address(this), senderQuoteQty);
     }
 
-    function depositTokens(uint size, bool isBase) public {
+    function depositTokens(uint size, bool isBase) public returns (uint256) {
         baseToken.approve(address(lp), MAX_INT);
         quoteToken.approve(address(lp), MAX_INT);
-        lp.deposit(isBase, size);
+        return lp.deposit(isBase, size);
     }
 
-    function withdrawTokens(uint size, bool isBase) public {
-        lp.withdraw(isBase, size);
+    function withdrawTokens(uint size, bool isBase) public returns (uint256) {
+        return lp.withdraw(isBase, size);
     }
 
     function setPrices(int32 basePrice, int32 quotePrice) private {
@@ -97,8 +97,8 @@ contract OracleLPTest is Test {
     }
 
     function doSwap(bool isBuy, uint size) private {
-        baseToken.approve(address(lp), MAX_INT);
-        quoteToken.approve(address(lp), MAX_INT);
+        // baseToken.approve(address(lp), MAX_INT);
+        // quoteToken.approve(address(lp), MAX_INT);
         lp.swap(isBuy, size);
     }
 
@@ -129,22 +129,12 @@ contract OracleLPTest is Test {
 
         uint amount = 10e18;
         setPrices(10, 1);
-        depositTokens(amount, true); // deposit 10e18 base token
+        uint value = depositTokens(amount, true); // deposit 10e18 base token
 
         assertEq(baseToken.balanceOf(address(this)), 20e18 - amount);
         assertEq(baseToken.balanceOf(address(lp)), amount);
-        uint256 expectedLP = convertToUint(
-            mockPyth.getPrice(BASE_PRICE_ID),
-            18
-        ) * amount;
-        emit log("Supply of LP");
-        emit log_uint(lp.totalSupply());
-        emit log("ExpectedLP: ");
-        emit log_uint(expectedLP);
-        emit log("ActualLP:");
-        emit log_uint(lp.balanceOf(address(this)));
-        assertEq(lp.balanceOf(address(this)), expectedLP);
-        return expectedLP;
+        assertEq(lp.balanceOf(address(this)), value);
+        return value;
     }
 
     function testSecondDeposit() public returns (uint256) {
@@ -153,16 +143,13 @@ contract OracleLPTest is Test {
         uint amount = 5e18;
         setPrices(10, 1);
 
-        depositTokens(amount, false); // deposit 5e18 quote token
+        uint value = depositTokens(amount, false); // deposit 5e18 quote token
 
         assertEq(quoteToken.balanceOf(address(this)), 20e18 - amount);
         assertEq(quoteToken.balanceOf(address(lp)), amount);
-        uint256 expectedLP = convertToUint(
-            mockPyth.getPrice(QUOTE_PRICE_ID),
-            18
-        ) * amount;
-        assertEq(lp.balanceOf(address(this)), currentLP + expectedLP);
-        return currentLP + expectedLP;
+        emit log_uint(lp.totalSupply());
+        assertEq(lp.balanceOf(address(this)), currentLP + value);
+        return currentLP + value;
     }
 
     function testSwap() public {

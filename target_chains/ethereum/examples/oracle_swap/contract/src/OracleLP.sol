@@ -17,7 +17,7 @@ contract OracleLP is ERC20 {
     ERC20 public baseToken;
     ERC20 public quoteToken;
 
-    bool empty;
+    bool empty = true;
     uint constant MIN_DEPOSIT_SIZE = 10 ** 8;
 
     constructor(
@@ -57,7 +57,7 @@ contract OracleLP is ERC20 {
     }
 
     // * size: amount of target token
-    function deposit(bool isBase, uint size) external returns (uint) {
+    function deposit(bool isBase, uint256 size) external returns (uint) {
         require(size > MIN_DEPOSIT_SIZE, "OracleLP: INSUFFICIENT DEPOSIT SIZE");
         if (isBase)
             require(
@@ -69,19 +69,20 @@ contract OracleLP is ERC20 {
                 quoteToken.transferFrom(msg.sender, address(this), size),
                 "OracleLP: TRANSFER TOKEN FAILURE"
             );
-        (uint basePrice, uint quotePrice) = getCurrentPrices();
+        (uint256 basePrice, uint256 quotePrice) = getCurrentPrices();
 
         uint256 currentPrice; // getting current price of token
         if (isBase) currentPrice = basePrice;
         else currentPrice = quotePrice;
 
-        uint totalValue = currentPrice * size;
+        uint256 totalValue = currentPrice * size;
         if (empty) {
             mint(msg.sender, totalValue);
+            empty = false;
         } else {
             mint(
                 msg.sender,
-                (totalSupply() * totalValue) / (getPoolCurrentTotalValue())
+                totalSupply() / (getPoolCurrentTotalValue() / totalValue)
             );
         }
         return totalValue;
@@ -200,11 +201,13 @@ contract OracleLP is ERC20 {
         quoteToken = ERC20(_quoteToken);
     }
 
-    function mint(address account, uint amount) internal {
+    function mint(address account, uint256 amount) internal {
+        // _mint(address(this), amount);
+        // transferFrom(address(this), account, amount);
         _mint(account, amount);
     }
 
-    function burn(address account, uint amount) internal {
+    function burn(address account, uint256 amount) internal {
         _burn(account, amount);
     }
 
