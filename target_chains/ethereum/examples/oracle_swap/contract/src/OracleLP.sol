@@ -4,11 +4,12 @@ pragma solidity ^0.8.0;
 import "pyth-sdk-solidity/IPyth.sol";
 import "pyth-sdk-solidity/PythStructs.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+
 /**
  ** Buy: deposit quoteToken to this, withdraw baseToken
  ** Sell: deposit baseToken to this, withdraw quoteToken
  */
-contract OracleLP is ERC20{
+contract OracleLP is ERC20 {
     IPyth pyth;
     bytes32 baseTokenPriceId;
     bytes32 quoteTokenPriceId;
@@ -16,7 +17,7 @@ contract OracleLP is ERC20{
     ERC20 public baseToken;
     ERC20 public quoteToken;
 
-    uint256 kLast;
+    bool empty;
     uint constant MIN_DEPOSIT_SIZE = 10 ** 8;
 
     constructor(
@@ -32,38 +33,45 @@ contract OracleLP is ERC20{
         baseToken = ERC20(_baseToken);
         quoteToken = ERC20(_quoteToken);
     }
-    // * size: amount of target token 
+
+    // * size: amount of target token
     // e.g. (true, 10) => give 10 base token, get 10 * baseTokenPrice LP Token
-    function deposit(bool isBase, uint size) external returns(uint){
+    function deposit(bool isBase, uint size) external returns (uint) {
         require(size > MIN_DEPOSIT_SIZE, "OracleLP: INSUFFICIENT DEPOSIT SIZE");
         if (isBase)
-            require(baseToken.transferFrom(msg.sender, address(this), size), "OracleLP: TRANSFER TOKEN FAILURE");
+            require(
+                baseToken.transferFrom(msg.sender, address(this), size),
+                "OracleLP: TRANSFER TOKEN FAILURE"
+            );
         else
-            require(quoteToken.transferFrom(msg.sender, address(this), size), "OracleLP: TRANSFER TOKEN FAILURE");
-        uint256 currentPrice;    // getting current price of token
-        if(isBase)
+            require(
+                quoteToken.transferFrom(msg.sender, address(this), size),
+                "OracleLP: TRANSFER TOKEN FAILURE"
+            );
+        uint256 currentPrice; // getting current price of token
+        if (isBase)
             currentPrice = convertToUint(pyth.getPrice(baseTokenPriceId), 18);
-        else
-            currentPrice = convertToUint(pyth.getPrice(quoteTokenPriceId), 18);
+        else currentPrice = convertToUint(pyth.getPrice(quoteTokenPriceId), 18);
 
         uint deltaK = currentPrice * size;
-        if(kLast == 0){
-            _mint(msg.sender,deltaK);
-        }
-        else{
-            _mint(msg.sender, totalSupply() * deltaK / kLast);
+        if (empty) {
+            _mint(msg.sender, deltaK);
+        } else {
+            _mint(msg.sender, (totalSupply() * deltaK) / kLast);
         }
         kLast += deltaK;
         return deltaK;
     }
 
-    // * size amount of LP token 
+    // * size amount of LP token
     // e.g. (true, 10) => give 10 LP token, get (10 / baseTokenPrice) base token
-    function withdraw(bool isBase, uint size) external returns (uint){
+    function withdraw(bool isBase, uint size) external returns (uint) {
         require();
         uint256 basePrice = convertToUint(pyth.getPrice(baseTokenPriceId), 18);
-        uint256 quotePrice = convertToUint(pyth.getPrice(quoteTokenPriceId), 18);
-
+        uint256 quotePrice = convertToUint(
+            pyth.getPrice(quoteTokenPriceId),
+            18
+        );
     }
 
     function swap(
