@@ -34,6 +34,15 @@ contract OracleLP is ERC20 {
         quoteToken = ERC20(_quoteToken);
     }
 
+    function calculatePoolCurrentTotalValue() public view returns (uint) {
+        uint256 basePrice = convertToUint(pyth.getPrice(baseTokenPriceId), 18);
+        uint256 quotePrice = convertToUint(
+            pyth.getPrice(quoteTokenPriceId),
+            18
+        );
+        return baseBalance() * basePrice + quoteBalance() + quotePrice;
+    }
+
     // * size: amount of target token
     // e.g. (true, 10) => give 10 base token, get 10 * baseTokenPrice LP Token
     function deposit(bool isBase, uint size) external returns (uint) {
@@ -57,21 +66,46 @@ contract OracleLP is ERC20 {
         if (empty) {
             _mint(msg.sender, deltaK);
         } else {
-            _mint(msg.sender, (totalSupply() * deltaK) / kLast);
+            _mint(
+                msg.sender,
+                (totalSupply() * deltaK) /
+                    (calculatePoolCurrentTotalValue() + deltaK)
+            );
         }
-        kLast += deltaK;
         return deltaK;
     }
 
     // * size amount of LP token
     // e.g. (true, 10) => give 10 LP token, get (10 / baseTokenPrice) base token
     function withdraw(bool isBase, uint size) external returns (uint) {
-        require();
+        // require();
         uint256 basePrice = convertToUint(pyth.getPrice(baseTokenPriceId), 18);
         uint256 quotePrice = convertToUint(
             pyth.getPrice(quoteTokenPriceId),
             18
         );
+        uint256 returnAmount;
+        uint256 burnAmount;
+        if (isBase) {
+            returnAmount =
+                ((size / totalSupply()) * calculatePoolCurrentTotalValue()) /
+                basePrice;
+            if (returnAmount > baseBalance()) {
+                returnAmount = baseBalance();
+            }
+            // TODO: transfer return amount of base token to withdrawer
+            // TODO: burn corresponsing amount of LP token
+        } else {
+            returnAmount =
+                ((size / totalSupply()) * calculatePoolCurrentTotalValue()) /
+                quotePrice;
+            if (returnAmount > quoteBalance()) {
+                returnAmount = quoteBalance();
+            }
+            // TODO: transfer return amount of quote token to withdrawer
+            // TODO: burn corresponsing amount of LP token
+            return returnAmount;
+        }
     }
 
     function swap(
