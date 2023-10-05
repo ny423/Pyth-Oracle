@@ -23,3 +23,7 @@ In the following explanation, consider the 2 tokens in the pool as Token A and T
 - Consider the case where user wants to swap from A to B
 - When there is no fee, P<sub>A</sub> * A = P<sub>B</sub> * B, Token B he can get = P<sub>A</sub> / P<sub>B</sub> * A
 - After adding fee, Token B he can get = P<sub>A</sub> / P<sub>B</sub> * A * (1-0.3%)
+
+## Deployments
+#### Network: Polygon Mumbai
+- OracleLP: 0x8603a07E713207D1b60dfE0f94e1948600042D1c
