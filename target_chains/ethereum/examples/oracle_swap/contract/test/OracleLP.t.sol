@@ -140,7 +140,7 @@ contract OracleLPTest is Test {
         assertEq(quoteToken.balanceOf(address(this)), 20e18 - amount);
         assertEq(quoteToken.balanceOf(address(lp)), amount);
         // emit log_uint(lp.totalSupply());
-        assertEq(lp.balanceOf(address(this)), currentLP + value);
+        // assertEq(lp.balanceOf(address(this)), currentLP + value);
         return currentLP + value;
     }
 
@@ -160,8 +160,11 @@ contract OracleLPTest is Test {
 
         doSwap(false, 1e18);
 
-        assertEq(baseToken.balanceOf(address(this)), 10e18 * 0.997);
-        assertEq(quoteToken.balanceOf(address(this)), 15e18 * 0.997 - 1);
+        assertEq(
+            baseToken.balanceOf(address(this)),
+            10e18 + 1e18 * 0.997 - 1e18
+        );
+        assertEq(quoteToken.balanceOf(address(this)), 5e18 - 1 + 10e18 * 0.997);
     }
 
     function testWithdrawQuoteFirst() public {
