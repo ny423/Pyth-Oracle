@@ -88,14 +88,18 @@ contract OracleLP is ERC20 {
         return totalValue;
     }
 
-    // * size amount of LP token
-    function withdraw(bool isBase, uint size) external returns (uint) {
+    // * size = amount of LP token, returns number of token sent to user
+    function withdraw(
+        bool isBase,
+        uint256 size
+    ) external returns (uint256, bool) {
         if (empty) {
-            return 0;
+            return (0, false);
         }
-        (uint basePrice, uint quotePrice) = getCurrentPrices();
+        (uint256 basePrice, uint256 quotePrice) = getCurrentPrices();
         uint256 totalValue = getPoolCurrentTotalValue();
         uint256 returnAmount;
+        bool exceed = false;
         if (isBase) {
             returnAmount = ((size / totalSupply()) * totalValue) / basePrice;
             if (returnAmount > baseBalance()) {
@@ -122,7 +126,7 @@ contract OracleLP is ERC20 {
         if (getPoolCurrentTotalValue() == 0) {
             empty = true;
         }
-        return returnAmount;
+        return (returnAmount, exceed);
     }
 
     /*
@@ -205,13 +209,17 @@ contract OracleLP is ERC20 {
         quoteToken = ERC20(_quoteToken);
     }
 
+    event Mint(uint amount);
+
     function mint(address account, uint256 amount) internal {
-        // _mint(address(this), amount);
-        // transferFrom(address(this), account, amount);
+        emit Mint(amount);
         _mint(account, amount);
     }
 
+    event Burn(uint amount);
+
     function burn(address account, uint256 amount) internal {
+        emit Burn(amount);
         _burn(account, amount);
     }
 

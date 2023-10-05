@@ -62,16 +62,6 @@ contract OracleLPTest is Test {
         quoteToken.mint(address(this), senderQuoteQty);
     }
 
-    function depositTokens(uint size, bool isBase) public returns (uint256) {
-        // baseToken.approve(address(lp), MAX_INT);
-        // quoteToken.approve(address(lp), MAX_INT);
-        return lp.deposit(isBase, size);
-    }
-
-    function withdrawTokens(uint size, bool isBase) public returns (uint256) {
-        return lp.withdraw(isBase, size);
-    }
-
     function setPrices(int32 basePrice, int32 quotePrice) private {
         bytes[] memory updateData = new bytes[](2);
         updateData[0] = mockPyth.createPriceFeedUpdateData(
@@ -131,7 +121,7 @@ contract OracleLPTest is Test {
 
         uint amount = 10e18;
         setPrices(10, 1);
-        uint value = depositTokens(amount, true); // deposit 10e18 base token
+        uint value = lp.deposit(true, amount); // deposit 10e18 base token
 
         assertEq(baseToken.balanceOf(address(this)), 20e18 - amount);
         assertEq(baseToken.balanceOf(address(lp)), amount);
@@ -145,7 +135,7 @@ contract OracleLPTest is Test {
         uint amount = 5e18;
         // setPrices(10, 1);
 
-        uint value = depositTokens(amount, false); // deposit 5e18 quote token
+        uint value = lp.deposit(false, amount); // deposit 5e18 quote token
 
         assertEq(quoteToken.balanceOf(address(this)), 20e18 - amount);
         assertEq(quoteToken.balanceOf(address(lp)), amount);
@@ -174,20 +164,61 @@ contract OracleLPTest is Test {
         assertEq(quoteToken.balanceOf(address(this)), 15e18 * 0.997 - 1);
     }
 
-    function testWithdraw() public {
+    function testWithdrawQuoteFirst() public {
         testSecondDeposit();
 
-        uint lpBalance = lp.balanceOf(address(this));
-        emit log_named_uint("init lp balance", lpBalance);
-        lp.withdraw(true, lpBalance);
-        emit log_named_uint("lp balance after first withdraw", lpBalance);
-        lpBalance = lp.balanceOf(address(this));
-        lp.withdraw(false, lpBalance);
+        // debugger();
+
+        lp.withdraw(false, lp.balanceOf(address(this)));
+
+        // debugger();
+
+        lp.withdraw(true, lp.balanceOf(address(this)));
+
+        // debugger();
 
         assertEq(quoteToken.balanceOf(address(this)), 20e18);
         assertEq(baseToken.balanceOf(address(this)), 20e18);
         assertEq(quoteToken.balanceOf(address(lp)), 0);
         assertEq(baseToken.balanceOf(address(lp)), 0);
+    }
+
+    function testWithdrawBaseFirst() public {
+        testSecondDeposit();
+
+        debugger();
+
+        lp.withdraw(true, lp.balanceOf(address(this)));
+
+        debugger();
+
+        lp.withdraw(false, lp.balanceOf(address(this)));
+
+        debugger();
+
+        assertEq(quoteToken.balanceOf(address(this)), 20e18);
+        assertEq(baseToken.balanceOf(address(this)), 20e18);
+        assertEq(quoteToken.balanceOf(address(lp)), 0);
+        assertEq(baseToken.balanceOf(address(lp)), 0);
+    }
+
+    function debugger() private {
+        emit log_named_decimal_uint("total lp supply: ", lp.totalSupply(), 36);
+        emit log_named_decimal_uint(
+            "lp balance: ",
+            lp.balanceOf(address(this)),
+            36
+        );
+        emit log_named_decimal_uint(
+            "base balance: ",
+            baseToken.balanceOf(address(this)),
+            18
+        );
+        emit log_named_decimal_uint(
+            "quote balance: ",
+            quoteToken.balanceOf(address(this)),
+            18
+        );
     }
 
     receive() external payable {}
