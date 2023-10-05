@@ -90,35 +90,33 @@ contract OracleLP is ERC20 {
 
     // * size amount of LP token
     function withdraw(bool isBase, uint size) external returns (uint) {
+        if (empty) {
+            return 0;
+        }
         (uint basePrice, uint quotePrice) = getCurrentPrices();
+        uint256 totalValue = getPoolCurrentTotalValue();
         uint256 returnAmount;
         if (isBase) {
-            returnAmount =
-                ((size / totalSupply()) * getPoolCurrentTotalValue()) /
-                basePrice;
+            returnAmount = ((size / totalSupply()) * totalValue) / basePrice;
             if (returnAmount > baseBalance()) {
                 returnAmount = baseBalance();
-                size =
-                    (returnAmount * totalSupply() * basePrice) /
-                    getPoolCurrentTotalValue();
+                size = (returnAmount * totalSupply() * basePrice) / totalValue;
             }
             // transfer return amount of base token to withdrawer
             // burn corresponsing amount of LP token
             burn(msg.sender, size);
+            baseToken.approve(address(this), returnAmount);
             baseToken.transferFrom(address(this), msg.sender, returnAmount);
         } else {
-            returnAmount =
-                ((size / totalSupply()) * getPoolCurrentTotalValue()) /
-                quotePrice;
+            returnAmount = ((size / totalSupply()) * totalValue) / quotePrice;
             if (returnAmount > quoteBalance()) {
                 returnAmount = quoteBalance();
-                size =
-                    (returnAmount * totalSupply() * quotePrice) /
-                    getPoolCurrentTotalValue();
+                size = (returnAmount * totalSupply() * quotePrice) / totalValue;
             }
             // transfer return amount of quote token to withdrawer
             // burn corresponsing amount of LP token
             burn(msg.sender, size);
+            quoteToken.approve(address(this), returnAmount);
             quoteToken.transferFrom(address(this), msg.sender, returnAmount);
         }
         if (getPoolCurrentTotalValue() == 0) {
@@ -127,6 +125,10 @@ contract OracleLP is ERC20 {
         return returnAmount;
     }
 
+    /*
+     * Buy: pay quote get base
+     * Sell: pay base get quote
+     */
     function swap(bool isBuy, uint size) external {
         (uint basePrice, uint quotePrice) = getCurrentPrices();
 
@@ -141,9 +143,11 @@ contract OracleLP is ERC20 {
             quoteSize += 1;
 
             quoteToken.transferFrom(msg.sender, address(this), quoteSize);
+            baseToken.approve(address(this), (size * 997) / 1000);
             baseToken.transfer(msg.sender, (size * 997) / 1000); // * 0.997 for 0.003 charged for fee
         } else {
             baseToken.transferFrom(msg.sender, address(this), size);
+            quoteToken.approve(address(this), (quoteSize * 997) / 1000);
             quoteToken.transfer(msg.sender, (quoteSize * 997) / 1000);
         }
     }

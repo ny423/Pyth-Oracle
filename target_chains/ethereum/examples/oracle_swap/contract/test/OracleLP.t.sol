@@ -53,6 +53,8 @@ contract OracleLPTest is Test {
             address(baseToken),
             address(quoteToken)
         );
+        baseToken.approve(address(lp), MAX_INT);
+        quoteToken.approve(address(lp), MAX_INT);
     }
 
     function setupTokens(uint senderBaseQty, uint senderQuoteQty) private {
@@ -61,8 +63,8 @@ contract OracleLPTest is Test {
     }
 
     function depositTokens(uint size, bool isBase) public returns (uint256) {
-        baseToken.approve(address(lp), MAX_INT);
-        quoteToken.approve(address(lp), MAX_INT);
+        // baseToken.approve(address(lp), MAX_INT);
+        // quoteToken.approve(address(lp), MAX_INT);
         return lp.deposit(isBase, size);
     }
 
@@ -97,8 +99,8 @@ contract OracleLPTest is Test {
     }
 
     function doSwap(bool isBuy, uint size) private {
-        // baseToken.approve(address(lp), MAX_INT);
-        // quoteToken.approve(address(lp), MAX_INT);
+        // if (isBuy) quoteToken.approve(address(lp), size);
+        // else baseToken.approve(address(lp), size);
         lp.swap(isBuy, size);
     }
 
@@ -141,41 +143,52 @@ contract OracleLPTest is Test {
         uint256 currentLP = testInitialDeposit();
 
         uint amount = 5e18;
-        setPrices(10, 1);
+        // setPrices(10, 1);
 
         uint value = depositTokens(amount, false); // deposit 5e18 quote token
 
         assertEq(quoteToken.balanceOf(address(this)), 20e18 - amount);
         assertEq(quoteToken.balanceOf(address(lp)), amount);
-        emit log_uint(lp.totalSupply());
+        // emit log_uint(lp.totalSupply());
         assertEq(lp.balanceOf(address(this)), currentLP + value);
         return currentLP + value;
     }
 
     function testSwap() public {
-        setupTokens(20e18, 20e18);
+        testSecondDeposit(); // set ups are done here
+
+        assertEq(baseToken.balanceOf(address(this)), 10e18);
+        assertEq(quoteToken.balanceOf(address(this)), 15e18);
+        assertEq(baseToken.balanceOf(address(lp)), 10e18);
+        assertEq(quoteToken.balanceOf(address(lp)), 5e18);
+        // assertions till here are correct
 
         doSwap(true, 1e18);
 
-        assertEq(quoteToken.balanceOf(address(this)), 10e18 - 1);
-        assertEq(baseToken.balanceOf(address(this)), 21e18);
+        assertEq(baseToken.balanceOf(address(this)), 10e18 + 1e18 * 0.997);
+        assertEq(quoteToken.balanceOf(address(this)), 5e18 - 1);
 
         doSwap(false, 1e18);
 
-        assertEq(quoteToken.balanceOf(address(this)), 20e18 - 1);
-        assertEq(baseToken.balanceOf(address(this)), 20e18);
+        assertEq(baseToken.balanceOf(address(this)), 10e18 * 0.997);
+        assertEq(quoteToken.balanceOf(address(this)), 15e18 * 0.997 - 1);
     }
 
-    // function testWithdraw() public {
-    //     setupTokens(10e18, 10e18);
+    function testWithdraw() public {
+        testSecondDeposit();
 
-    //     swap.withdrawAll();
+        uint lpBalance = lp.balanceOf(address(this));
+        emit log_named_uint("init lp balance", lpBalance);
+        lp.withdraw(true, lpBalance);
+        emit log_named_uint("lp balance after first withdraw", lpBalance);
+        lpBalance = lp.balanceOf(address(this));
+        lp.withdraw(false, lpBalance);
 
-    //     assertEq(quoteToken.balanceOf(address(this)), 20e18);
-    //     assertEq(baseToken.balanceOf(address(this)), 20e18);
-    //     assertEq(quoteToken.balanceOf(address(swap)), 0);
-    //     assertEq(baseToken.balanceOf(address(swap)), 0);
-    // }
+        assertEq(quoteToken.balanceOf(address(this)), 20e18);
+        assertEq(baseToken.balanceOf(address(this)), 20e18);
+        assertEq(quoteToken.balanceOf(address(lp)), 0);
+        assertEq(baseToken.balanceOf(address(lp)), 0);
+    }
 
     receive() external payable {}
 }
