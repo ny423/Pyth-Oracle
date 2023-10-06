@@ -34,7 +34,7 @@ contract OracleLP is ERC20 {
         quoteToken = ERC20(_quoteToken);
     }
 
-    function getCurrentPrices() public payable returns (uint, uint) {
+    function getCurrentPrices() public payable returns (uint256, uint256) {
         PythStructs.Price memory currentBasePrice = pyth.getPrice(
             baseTokenPriceId
         );
@@ -56,12 +56,6 @@ contract OracleLP is ERC20 {
 
     event Deposit(bool isBase, uint256 amount, uint256 price);
 
-    event Debug(
-        uint256 totalSupply,
-        uint256 totalValue,
-        uint256 currentTotalValue
-    );
-
     // * size: amount of target token
     function deposit(bool isBase, uint256 size) external returns (uint) {
         require(size > MIN_DEPOSIT_SIZE, "OracleLP: INSUFFICIENT DEPOSIT SIZE");
@@ -82,7 +76,6 @@ contract OracleLP is ERC20 {
             mint(msg.sender, totalValue);
             empty = false;
         } else {
-            emit Debug(totalSupply(), totalValue, currentTotalValue);
             mint(msg.sender, (totalSupply() * totalValue) / currentTotalValue);
         }
 
@@ -115,7 +108,6 @@ contract OracleLP is ERC20 {
             return (0, false);
         }
         (uint256 basePrice, uint256 quotePrice) = getCurrentPrices();
-        // ! totalValue incorrect
         uint256 totalValue = getPoolCurrentTotalValue(basePrice, quotePrice);
         uint256 returnAmount;
         bool exceed = false;
@@ -207,27 +199,6 @@ contract OracleLP is ERC20 {
     // Get the number of quote tokens in the pool
     function quoteBalance() public view returns (uint256) {
         return quoteToken.balanceOf(address(this));
-    }
-
-    // Send all tokens in the oracle AMM pool to the caller of this method.
-    // (This function is for demo purposes only. You wouldn't include this on a real contract.)
-    function withdrawAll() external {
-        baseToken.transfer(msg.sender, baseToken.balanceOf(address(this)));
-        quoteToken.transfer(msg.sender, quoteToken.balanceOf(address(this)));
-    }
-
-    // Reinitialize the parameters of this contract.
-    // (This function is for demo purposes only. You wouldn't include this on a real contract.)
-    function reinitialize(
-        bytes32 _baseTokenPriceId,
-        bytes32 _quoteTokenPriceId,
-        address _baseToken,
-        address _quoteToken
-    ) external {
-        baseTokenPriceId = _baseTokenPriceId;
-        quoteTokenPriceId = _quoteTokenPriceId;
-        baseToken = ERC20(_baseToken);
-        quoteToken = ERC20(_quoteToken);
     }
 
     event Mint(uint256 amount);
