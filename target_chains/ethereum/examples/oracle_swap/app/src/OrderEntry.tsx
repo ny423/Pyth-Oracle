@@ -1,29 +1,28 @@
-import React, { useEffect, useState } from "react";
+import React, { FC, useEffect, useState } from "react";
 import "./App.css";
 import Web3 from "web3";
 import { BigNumber } from "ethers";
-import { TokenConfig, getContract, numberToTokenQty, tokenQtyToNumber } from "./utils/utils";
-import IPythAbi from "@pythnetwork/pyth-sdk-solidity/abis/IPyth.json";
-// import OracleSwapAbi from "./abi/OracleSwapAbi.json";
-import OracleLPAbi from './abi/OracleLPAbi.json';
+import { TokenConfig, numberToTokenQty, tokenQtyToNumber } from "./utils/utils";
 import { approveToken, getApprovedQuantity } from "./contracts/erc20";
-import { EvmPriceServiceConnection } from "@pythnetwork/pyth-evm-js";
+import { swap } from "./contracts/oracleLp";
 
 /**
  * The order entry component lets users enter a quantity of the base token to buy/sell and submit
  * the transaction to the blockchain.
  */
-export function OrderEntry(props: {
+
+type OrderEntryProps = {
   web3: Web3 | undefined;
   account: string | null;
   isBuy: boolean;
   approxPrice: number | undefined;
   baseToken: TokenConfig;
   quoteToken: TokenConfig;
-  priceServiceUrl: string;
-  pythContractAddress: string;
   swapContractAddress: string;
-}) {
+}
+
+export const OrderEntry: FC<OrderEntryProps> = ({
+  web3, account, isBuy, approxPrice, baseToken, quoteToken, swapContractAddress }) => {
   const [qty, setQty] = useState<string>("1");
   const [qtyBn, setQtyBn] = useState<BigNumber | undefined>(
     BigNumber.from("1")
@@ -33,28 +32,28 @@ export function OrderEntry(props: {
   );
   const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
 
-  const [spentToken, setSpentToken] = useState<TokenConfig>(props.baseToken);
+  const [spentToken, setSpentToken] = useState<TokenConfig>(baseToken);
   const [approxQuoteSize, setApproxQuoteSize] = useState<number | undefined>(
     undefined
   );
 
   useEffect(() => {
-    if (props.isBuy) {
-      setSpentToken(props.quoteToken);
+    if (isBuy) {
+      setSpentToken(quoteToken);
     } else {
-      setSpentToken(props.baseToken);
+      setSpentToken(baseToken);
     }
-  }, [props.isBuy, props.baseToken, props.quoteToken]);
+  }, [isBuy, baseToken, quoteToken]);
 
   useEffect(() => {
     async function helper() {
-      if (props.web3 !== undefined && props.account !== null) {
+      if (web3 !== undefined && account !== null) {
         setAuthorizedQty(
           await getApprovedQuantity(
-            props.web3!,
+            web3!,
             spentToken.erc20Address,
-            props.account!,
-            props.swapContractAddress
+            account!,
+            swapContractAddress
           )
         );
       } else {
@@ -68,16 +67,16 @@ export function OrderEntry(props: {
     return () => {
       clearInterval(interval);
     };
-  }, [props.web3, props.account, props.swapContractAddress, spentToken]);
+  }, [web3, account, swapContractAddress, spentToken]);
 
   useEffect(() => {
     try {
-      const qtyBn = numberToTokenQty(qty, props.baseToken.decimals);
+      const qtyBn = numberToTokenQty(qty, baseToken.decimals);
       setQtyBn(qtyBn);
     } catch (error) {
       setQtyBn(undefined);
     }
-  }, [props.baseToken.decimals, qty]);
+  }, [baseToken.decimals, qty]);
 
   useEffect(() => {
     if (qtyBn !== undefined) {
@@ -88,20 +87,20 @@ export function OrderEntry(props: {
   }, [qtyBn, authorizedQty]);
 
   useEffect(() => {
-    if (qtyBn !== undefined && props.approxPrice !== undefined) {
+    if (qtyBn !== undefined && approxPrice !== undefined) {
       setApproxQuoteSize(
-        tokenQtyToNumber(qtyBn, props.baseToken.decimals) * props.approxPrice
+        tokenQtyToNumber(qtyBn, baseToken.decimals) * approxPrice
       );
     } else {
       setApproxQuoteSize(undefined);
     }
-  }, [props.approxPrice, props.baseToken.decimals, qtyBn]);
+  }, [approxPrice, baseToken.decimals, qtyBn]);
 
   return (
     <div>
       <div>
         <p>
-          {props.isBuy ? "Buy" : "Sell"}
+          {isBuy ? "Buy" : "Sell"}
           <input
             type="text"
             name="base"
@@ -110,21 +109,21 @@ export function OrderEntry(props: {
               setQty(event.target.value);
             }}
           />
-          {props.baseToken.name}
+          {baseToken.name}
         </p>
         {qtyBn !== undefined && approxQuoteSize !== undefined ? (
-          props.isBuy ? (
+          isBuy ? (
             <p>
-              Pay {approxQuoteSize.toFixed(3)} {props.quoteToken.name} to
+              Pay {approxQuoteSize.toFixed(3)} {quoteToken.name} to
               receive{" "}
-              {tokenQtyToNumber(qtyBn, props.baseToken.decimals).toFixed(3)}{" "}
-              {props.baseToken.name}
+              {tokenQtyToNumber(qtyBn, baseToken.decimals).toFixed(3)}{" "}
+              {baseToken.name}
             </p>
           ) : (
             <p>
-              Pay {tokenQtyToNumber(qtyBn, props.baseToken.decimals).toFixed(3)}{" "}
-              {props.baseToken.name} to receive {approxQuoteSize.toFixed(3)}{" "}
-              {props.quoteToken.name}
+              Pay {tokenQtyToNumber(qtyBn, baseToken.decimals).toFixed(3)}{" "}
+              {baseToken.name} to receive {approxQuoteSize.toFixed(3)}{" "}
+              {quoteToken.name}
             </p>
           )
         ) : (
@@ -133,7 +132,7 @@ export function OrderEntry(props: {
       </div>
 
       <div className={"swap-steps"}>
-        {props.account === null || props.web3 === undefined ? (
+        {account === null || web3 === undefined ? (
           <div>Connect your wallet to swap</div>
         ) : (
           <div>
@@ -141,10 +140,10 @@ export function OrderEntry(props: {
             <button
               onClick={async () => {
                 await approveToken(
-                  props.web3!,
+                  web3!,
                   spentToken.erc20Address,
-                  props.account!,
-                  props.swapContractAddress
+                  account!,
+                  swapContractAddress
                 );
               }}
               disabled={isAuthorized}
@@ -155,17 +154,7 @@ export function OrderEntry(props: {
             2.
             <button
               onClick={async () => {
-                await sendSwapTx(
-                  props.web3!,
-                  props.priceServiceUrl,
-                  props.baseToken.pythPriceFeedId,
-                  props.quoteToken.pythPriceFeedId,
-                  props.pythContractAddress,
-                  props.swapContractAddress,
-                  props.account!,
-                  qtyBn!,
-                  props.isBuy
-                );
+                await swap(web3, account, isBuy, Number(qty));
               }}
               disabled={!isAuthorized}
             >
@@ -177,33 +166,4 @@ export function OrderEntry(props: {
       </div>
     </div>
   );
-}
-
-async function sendSwapTx(
-  web3: Web3,
-  priceServiceUrl: string,
-  baseTokenPriceFeedId: string,
-  quoteTokenPriceFeedId: string,
-  pythContractAddress: string,
-  lpContractAddress: string,
-  sender: string,
-  qtyWei: BigNumber,
-  isBuy: boolean
-) {
-  const pythPriceService = new EvmPriceServiceConnection(priceServiceUrl);
-  const priceFeedUpdateData = await pythPriceService.getPriceFeedsUpdateData([
-    baseTokenPriceFeedId,
-    quoteTokenPriceFeedId,
-  ]);
-
-  const pythContract = getContract(web3, IPythAbi, pythContractAddress);
-  const updateFee = await pythContract.methods
-    .getUpdateFee(priceFeedUpdateData)
-    .call();
-
-  const swapContract = getContract(web3, OracleLPAbi, lpContractAddress);
-
-  await swapContract.methods
-    .swap(isBuy, qtyWei, priceFeedUpdateData)
-    .send({ value: updateFee, from: sender });
 }

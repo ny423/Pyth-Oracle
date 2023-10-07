@@ -1,15 +1,14 @@
 import Web3 from "web3";
 import { numberToTokenQty } from "../../utils/utils";
 import { mint } from "../../contracts/erc20";
+import { ComponentProps } from "../../types";
 
 export function MintButton(props: {
-  web3: Web3;
-  sender: string;
   erc20Address: string;
   destination: string;
   qty: number;
   decimals: number;
-}) {
+} & ComponentProps) {
   return (
     <button
       onClick={async () => {

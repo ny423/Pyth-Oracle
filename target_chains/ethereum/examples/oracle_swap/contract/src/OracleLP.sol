@@ -17,7 +17,8 @@ contract OracleLP is ERC20 {
     ERC20 public baseToken;
     ERC20 public quoteToken;
 
-    bool empty = true;
+    bool public empty = true;
+    uint8 public constant PRICE_DECIMALS = 18;
 
     constructor(
         address _pyth,
@@ -41,8 +42,8 @@ contract OracleLP is ERC20 {
             quoteTokenPriceId
         );
 
-        uint256 basePrice = convertToUint(currentBasePrice, 0);
-        uint256 quotePrice = convertToUint(currentQuotePrice, 0);
+        uint256 basePrice = convertToUint(currentBasePrice, PRICE_DECIMALS);
+        uint256 quotePrice = convertToUint(currentQuotePrice, PRICE_DECIMALS);
         return (basePrice, quotePrice);
     }
 
@@ -64,6 +65,7 @@ contract OracleLP is ERC20 {
 
         if (isBase) currentPrice = basePrice;
         else currentPrice = quotePrice;
+
         emit Deposit(isBase, size, currentPrice);
 
         uint256 totalValue = currentPrice * size;
@@ -111,7 +113,7 @@ contract OracleLP is ERC20 {
         uint256 returnAmount;
         bool exceed = false;
         if (isBase) {
-            returnAmount = ((size / totalSupply()) * totalValue) / basePrice;
+            returnAmount = (size * totalValue) / basePrice / totalSupply();
             if (returnAmount > baseBalance()) {
                 returnAmount = baseBalance();
                 size = (returnAmount * totalSupply() * basePrice) / totalValue;
@@ -125,7 +127,7 @@ contract OracleLP is ERC20 {
             );
             emit Withdraw(isBase, size, basePrice, returnAmount);
         } else {
-            returnAmount = ((size / totalSupply()) * totalValue) / quotePrice;
+            returnAmount = (size * totalValue) / quotePrice / totalSupply();
             if (returnAmount > quoteBalance()) {
                 returnAmount = quoteBalance();
                 size = (returnAmount * totalSupply() * quotePrice) / totalValue;
@@ -218,6 +220,10 @@ contract OracleLP is ERC20 {
     function burn(address account, uint256 amount) internal {
         emit Burn(amount);
         _burn(account, amount);
+    }
+
+    function decimals() public pure override returns (uint8) {
+        return 36;
     }
 
     receive() external payable {}

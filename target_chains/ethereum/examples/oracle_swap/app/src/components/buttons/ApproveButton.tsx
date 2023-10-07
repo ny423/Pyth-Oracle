@@ -1,14 +1,12 @@
-import Web3 from "web3";
 import { FC } from "react";
 import { CONFIG } from "../../config";
 import { approveToken } from "../../contracts/erc20";
+import { ComponentProps } from "../../types";
 
 type ApproveButtonProps = {
-    web3: Web3,
-    sender: string,
     isBase: boolean,
     amount?: number,
-};
+} & ComponentProps;
 
 export const ApproveButton: FC<ApproveButtonProps> = (
     { web3, sender, isBase, amount }

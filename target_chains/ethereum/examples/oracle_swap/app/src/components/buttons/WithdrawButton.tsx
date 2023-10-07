@@ -1,13 +1,12 @@
 import Web3 from "web3";
 import { FC } from "react";
 import { withdraw } from "../../contracts/oracleLp";
+import { ComponentProps } from "../../types";
 
 type WithdrawButtonProps = {
-    web3: Web3,
-    sender: string,
     isBase: boolean,
     amount: number,
-};
+} & ComponentProps;
 
 export const WithdrawAllButton: FC<WithdrawButtonProps> = (
     { web3, sender, isBase, amount }

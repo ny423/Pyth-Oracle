@@ -25,7 +25,16 @@ In the following explanation, consider the 2 tokens in the pool as Token A and T
 - After adding fee, Token B he can get = P<sub>A</sub> / P<sub>B</sub> * A * (1-0.3%)
 
 ## Deployments
-#### Network: Polygon Mumbai (ChainId: 80001)
-- MockPyth: <a href="https://mumbai.polygonscan.com/address/0x512a04598f44671bb5b9a37b069c1a06508fddb9">0x512a04598f44671bB5B9A37B069C1A06508FDDb9</a>
+### Network: Polygon Mumbai (ChainId: 80001)
+- OracleLP: <a href="https://mumbai.polygonscan.com/address/0xa344b3595DE91e3eD9a3CaE5a6B5A5B85048dF45">0xa344b3595DE91e3eD9a3CaE5a6B5A5B85048dF45</a>
 - PythSetUp: <a href="https://mumbai.polygonscan.com/address/0xd3F09663590a889E9Abe13EFBBe43FF84253de6E">0xd3F09663590a889E9Abe13EFBBe43FF84253de6E</a>
-- OracleLP: <a href="https://mumbai.polygonscan.com/address/0x09c25a56022CEA153fDEFBBEa656efDD167b230d">0x09c25a56022CEA153fDEFBBEa656efDD167b230d</a>
+- MockPyth: <a href="https://mumbai.polygonscan.com/address/0x512a04598f44671bb5b9a37b069c1a06508fddb9">0x512a04598f44671bB5B9A37B069C1A06508FDDb9</a>
+
+### Contract Functionalities
+- OracleLP:
+    - Main Contract for handling deposit withdraw and swapping
+- PythSetUp: 
+    - Helper contract for facilitating the usage of Pyth Contract
+    - Getting the price update fee and do the update
+- MockPyth:
+    - Mock contract for handling price of the base and quote token

@@ -10,7 +10,7 @@ import { useMetaMask } from "metamask-react";
 import Web3 from "web3";
 import { ChainState, ExchangeRateMeta, tokenQtyToNumber } from "./utils/utils";
 import { OrderEntry } from "./OrderEntry";
-import { PriceText } from "./PriceText";
+import { PriceText } from "./components/price/PriceText";
 import { MintButton } from "./components/buttons/MintButton";
 import { getBalance } from "./contracts/erc20";
 import { CONFIG } from './config'
@@ -257,7 +257,7 @@ function App() {
                 <WithdrawAllButton
                   web3={web3!}
                   sender={account!}
-                  isBase={true}
+                  isBase={false}
                   amount={tokenQtyToNumber(
                     chainState.accountLPBalance, CONFIG.lpTokenDecimals
                   )}
@@ -275,9 +275,6 @@ function App() {
           Swap between {CONFIG.baseToken.name} and {CONFIG.quoteToken.name}
         </h3>
         <PriceText
-          price={pythOffChainPrice}
-          currentTime={time}
-          rate={exchangeRateMeta}
           baseToken={CONFIG.baseToken}
           quoteToken={CONFIG.quoteToken}
         />
@@ -303,8 +300,6 @@ function App() {
             approxPrice={exchangeRateMeta?.rate}
             baseToken={CONFIG.baseToken}
             quoteToken={CONFIG.quoteToken}
-            priceServiceUrl={CONFIG.priceServiceUrl}
-            pythContractAddress={CONFIG.pythContractAddress}
             swapContractAddress={CONFIG.lpContractAddress}
           />
         </div>
