@@ -1,6 +1,6 @@
 import Web3 from "web3";
-import { numberToTokenQty } from "./utils";
-import { mint } from "./erc20";
+import { numberToTokenQty } from "../../utils/utils";
+import { mint } from "../../contracts/erc20";
 
 export function MintButton(props: {
   web3: Web3;

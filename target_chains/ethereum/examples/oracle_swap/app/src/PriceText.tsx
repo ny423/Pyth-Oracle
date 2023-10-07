@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { HexString, Price } from "@pythnetwork/pyth-evm-js";
-import { ExchangeRateMeta, timeAgo, TokenConfig } from "./utils";
+import { ExchangeRateMeta, timeAgo, TokenConfig } from "./utils/utils";
 
 export function PriceTicker(props: {
   price: Price | undefined;
@@ -82,7 +82,7 @@ export function PriceText(props: {
             {timeAgo(
               (props.currentTime.getTime() -
                 props.rate.lastUpdatedTime.getTime()) /
-                1000
+              1000
             )}{" "}
             ago
           </p>

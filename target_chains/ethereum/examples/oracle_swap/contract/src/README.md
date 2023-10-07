@@ -25,5 +25,7 @@ In the following explanation, consider the 2 tokens in the pool as Token A and T
 - After adding fee, Token B he can get = P<sub>A</sub> / P<sub>B</sub> * A * (1-0.3%)
 
 ## Deployments
-#### Network: Polygon Mumbai
-- OracleLP: 0x8603a07E713207D1b60dfE0f94e1948600042D1c
+#### Network: Polygon Mumbai (ChainId: 80001)
+- MockPyth: <a href="https://mumbai.polygonscan.com/address/0x512a04598f44671bb5b9a37b069c1a06508fddb9">0x512a04598f44671bB5B9A37B069C1A06508FDDb9</a>
+- PythSetUp: <a href="https://mumbai.polygonscan.com/address/0xd3F09663590a889E9Abe13EFBBe43FF84253de6E">0xd3F09663590a889E9Abe13EFBBe43FF84253de6E</a>
+- OracleLP: <a href="https://mumbai.polygonscan.com/address/0x09c25a56022CEA153fDEFBBEa656efDD167b230d">0x09c25a56022CEA153fDEFBBEa656efDD167b230d</a>

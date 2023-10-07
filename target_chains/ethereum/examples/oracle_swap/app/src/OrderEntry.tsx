@@ -2,10 +2,11 @@ import React, { useEffect, useState } from "react";
 import "./App.css";
 import Web3 from "web3";
 import { BigNumber } from "ethers";
-import { TokenConfig, numberToTokenQty, tokenQtyToNumber } from "./utils";
+import { TokenConfig, getContract, numberToTokenQty, tokenQtyToNumber } from "./utils/utils";
 import IPythAbi from "@pythnetwork/pyth-sdk-solidity/abis/IPyth.json";
-import OracleSwapAbi from "./abi/OracleSwapAbi.json";
-import { approveToken, getApprovedQuantity } from "./erc20";
+// import OracleSwapAbi from "./abi/OracleSwapAbi.json";
+import OracleLPAbi from './abi/OracleLPAbi.json';
+import { approveToken, getApprovedQuantity } from "./contracts/erc20";
 import { EvmPriceServiceConnection } from "@pythnetwork/pyth-evm-js";
 
 /**
@@ -184,7 +185,7 @@ async function sendSwapTx(
   baseTokenPriceFeedId: string,
   quoteTokenPriceFeedId: string,
   pythContractAddress: string,
-  swapContractAddress: string,
+  lpContractAddress: string,
   sender: string,
   qtyWei: BigNumber,
   isBuy: boolean
@@ -195,19 +196,12 @@ async function sendSwapTx(
     quoteTokenPriceFeedId,
   ]);
 
-  const pythContract = new web3.eth.Contract(
-    IPythAbi as any,
-    pythContractAddress
-  );
-
+  const pythContract = getContract(web3, IPythAbi, pythContractAddress);
   const updateFee = await pythContract.methods
     .getUpdateFee(priceFeedUpdateData)
     .call();
 
-  const swapContract = new web3.eth.Contract(
-    OracleSwapAbi as any,
-    swapContractAddress
-  );
+  const swapContract = getContract(web3, OracleLPAbi, lpContractAddress);
 
   await swapContract.methods
     .swap(isBuy, qtyWei, priceFeedUpdateData)

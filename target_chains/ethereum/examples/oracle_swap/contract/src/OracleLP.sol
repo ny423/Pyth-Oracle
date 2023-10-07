@@ -10,15 +10,14 @@ import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
  ** Sell: deposit baseToken to this, withdraw quoteToken
  */
 contract OracleLP is ERC20 {
-    IPyth pyth;
-    bytes32 baseTokenPriceId;
-    bytes32 quoteTokenPriceId;
+    IPyth public pyth;
+    bytes32 public baseTokenPriceId;
+    bytes32 public quoteTokenPriceId;
 
     ERC20 public baseToken;
     ERC20 public quoteToken;
 
     bool empty = true;
-    uint256 constant MIN_DEPOSIT_SIZE = 10 ** 8;
 
     constructor(
         address _pyth,
@@ -34,16 +33,16 @@ contract OracleLP is ERC20 {
         quoteToken = ERC20(_quoteToken);
     }
 
-    function getCurrentPrices() public payable returns (uint, uint) {
-        PythStructs.Price memory currentBasePrice = pyth.getPrice(
+    function getCurrentPrices() public view returns (uint, uint) {
+        PythStructs.Price memory currentBasePrice = pyth.getPriceUnsafe(
             baseTokenPriceId
         );
-        PythStructs.Price memory currentQuotePrice = pyth.getPrice(
+        PythStructs.Price memory currentQuotePrice = pyth.getPriceUnsafe(
             quoteTokenPriceId
         );
 
-        uint256 basePrice = convertToUint(currentBasePrice, 18);
-        uint256 quotePrice = convertToUint(currentQuotePrice, 18);
+        uint256 basePrice = convertToUint(currentBasePrice, 0);
+        uint256 quotePrice = convertToUint(currentQuotePrice, 0);
         return (basePrice, quotePrice);
     }
 
@@ -56,15 +55,9 @@ contract OracleLP is ERC20 {
 
     event Deposit(bool isBase, uint256 amount, uint256 price);
 
-    event Debug(
-        uint256 totalSupply,
-        uint256 totalValue,
-        uint256 currentTotalValue
-    );
-
     // * size: amount of target token
     function deposit(bool isBase, uint256 size) external returns (uint) {
-        require(size > MIN_DEPOSIT_SIZE, "OracleLP: INSUFFICIENT DEPOSIT SIZE");
+        // require(size > MIN_DEPOSIT_SIZE, "OracleLP: INSUFFICIENT DEPOSIT SIZE");
         (uint256 basePrice, uint256 quotePrice) = getCurrentPrices();
 
         uint256 currentPrice; // getting current price of token
@@ -82,7 +75,6 @@ contract OracleLP is ERC20 {
             mint(msg.sender, totalValue);
             empty = false;
         } else {
-            emit Debug(totalSupply(), totalValue, currentTotalValue);
             mint(msg.sender, (totalSupply() * totalValue) / currentTotalValue);
         }
 
@@ -115,7 +107,6 @@ contract OracleLP is ERC20 {
             return (0, false);
         }
         (uint256 basePrice, uint256 quotePrice) = getCurrentPrices();
-        // ! totalValue incorrect
         uint256 totalValue = getPoolCurrentTotalValue(basePrice, quotePrice);
         uint256 returnAmount;
         bool exceed = false;
@@ -129,7 +120,9 @@ contract OracleLP is ERC20 {
             // burn corresponsing amount of LP token
             burn(msg.sender, size);
             baseToken.approve(address(this), returnAmount);
-            baseToken.transferFrom(address(this), msg.sender, returnAmount);
+            require(
+                baseToken.transferFrom(address(this), msg.sender, returnAmount)
+            );
             emit Withdraw(isBase, size, basePrice, returnAmount);
         } else {
             returnAmount = ((size / totalSupply()) * totalValue) / quotePrice;
@@ -141,7 +134,9 @@ contract OracleLP is ERC20 {
             // burn corresponsing amount of LP token
             burn(msg.sender, size);
             quoteToken.approve(address(this), returnAmount);
-            quoteToken.transferFrom(address(this), msg.sender, returnAmount);
+            require(
+                quoteToken.transferFrom(address(this), msg.sender, returnAmount)
+            );
             emit Withdraw(isBase, size, quotePrice, returnAmount);
         }
         if (baseBalance() == 0 && quoteBalance() == 0) {
@@ -151,8 +146,8 @@ contract OracleLP is ERC20 {
     }
 
     /*
-     * Buy: pay quote get base
-     * Sell: pay base get quote
+     * Buy: get <size> base token
+     * Sell: pay <size> base token
      */
     function swap(bool isBuy, uint256 size) external {
         (uint256 basePrice, uint256 quotePrice) = getCurrentPrices();
@@ -167,13 +162,15 @@ contract OracleLP is ERC20 {
             // (Round up)
             quoteSize += 1;
 
-            quoteToken.transferFrom(msg.sender, address(this), quoteSize);
+            require(
+                quoteToken.transferFrom(msg.sender, address(this), quoteSize)
+            );
             baseToken.approve(address(this), (size * 997) / 1000);
-            baseToken.transfer(msg.sender, (size * 997) / 1000); // * 0.997 for 0.003 charged for fee
+            require(baseToken.transfer(msg.sender, (size * 997) / 1000)); // * 0.997 for 0.003 charged for fee
         } else {
-            baseToken.transferFrom(msg.sender, address(this), size);
+            require(baseToken.transferFrom(msg.sender, address(this), size));
             quoteToken.approve(address(this), (quoteSize * 997) / 1000);
-            quoteToken.transfer(msg.sender, (quoteSize * 997) / 1000);
+            require(quoteToken.transfer(msg.sender, (quoteSize * 997) / 1000));
         }
     }
 

@@ -1,5 +1,4 @@
-import "./App.css";
-import ERC20Abi from "./abi/ERC20MockAbi.json";
+import ERC20Abi from "../abi/ERC20MockAbi.json";
 import Web3 from "web3";
 import { BigNumber } from "ethers";
 

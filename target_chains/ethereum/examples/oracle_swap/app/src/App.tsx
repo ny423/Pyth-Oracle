@@ -8,35 +8,16 @@ import {
 } from "@pythnetwork/pyth-evm-js";
 import { useMetaMask } from "metamask-react";
 import Web3 from "web3";
-import { ChainState, ExchangeRateMeta, tokenQtyToNumber } from "./utils";
+import { ChainState, ExchangeRateMeta, tokenQtyToNumber } from "./utils/utils";
 import { OrderEntry } from "./OrderEntry";
 import { PriceText } from "./PriceText";
-import { MintButton } from "./MintButton";
-import { getBalance } from "./erc20";
+import { MintButton } from "./components/buttons/MintButton";
+import { getBalance } from "./contracts/erc20";
+import { CONFIG } from './config'
+import { DepositButton } from "./components/buttons/DepositButton";
+import { WithdrawAllButton } from "./components/buttons/WithdrawButton";
+import { ApproveButton } from "./components/buttons/ApproveButton";
 
-const CONFIG = {
-  // Each token is configured with its ERC20 contract address and Pyth Price Feed ID.
-  // You can find the list of price feed ids at https://pyth.network/developers/price-feed-ids
-  // Note that feeds have different ids on testnet / mainnet.
-  baseToken: {
-    name: "BRL",
-    erc20Address: "0xB3a2EDFEFC35afE110F983E32Eb67E671501de1f",
-    pythPriceFeedId:
-      "08f781a893bc9340140c5f89c8a96f438bcfae4d1474cc0f688e3a52892c7318",
-    decimals: 18,
-  },
-  quoteToken: {
-    name: "USD",
-    erc20Address: "0x8C65F3b18fB29D756d26c1965d84DBC273487624",
-    pythPriceFeedId:
-      "1fc18861232290221461220bd4e2acd1dcdfbc89c84092c93c18bdc7756c1588",
-    decimals: 18,
-  },
-  swapContractAddress: "0x15F9ccA28688F5E6Cbc8B00A8f33e8cE73eD7B02",
-  pythContractAddress: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
-  priceServiceUrl: "https://xc-testnet.pyth.network",
-  mintQty: 100,
-};
 
 function App() {
   const { status, connect, account, ethereum } = useMetaMask();
@@ -67,15 +48,19 @@ function App() {
             CONFIG.quoteToken.erc20Address,
             account
           ),
+          accountLPBalance: await getBalance(
+            web3, CONFIG.lpContractAddress,
+            account
+          ),
           poolBaseBalance: await getBalance(
             web3,
             CONFIG.baseToken.erc20Address,
-            CONFIG.swapContractAddress
+            CONFIG.lpContractAddress
           ),
           poolQuoteBalance: await getBalance(
             web3,
             CONFIG.quoteToken.erc20Address,
-            CONFIG.swapContractAddress
+            CONFIG.lpContractAddress
           ),
         });
       } else {
@@ -192,6 +177,11 @@ function App() {
                   qty={CONFIG.mintQty}
                   decimals={CONFIG.baseToken.decimals}
                 />
+                <ApproveButton
+                  web3={web3!}
+                  sender={account!}
+                  isBase={true}
+                />
               </p>
               <p>
                 {tokenQtyToNumber(
@@ -207,6 +197,18 @@ function App() {
                   qty={CONFIG.mintQty}
                   decimals={CONFIG.quoteToken.decimals}
                 />
+                <ApproveButton
+                  web3={web3!}
+                  sender={account!}
+                  isBase={false}
+                />
+              </p>
+              <p>
+                {
+                  tokenQtyToNumber(
+                    chainState.accountLPBalance, CONFIG.lpTokenDecimals
+                  )
+                }{" "}{"OLP"}
               </p>
             </div>
           ) : (
@@ -216,7 +218,7 @@ function App() {
 
         <h3>AMM Balances</h3>
         <div>
-          <p>Contract address: {CONFIG.swapContractAddress}</p>
+          <p>Contract address: {CONFIG.lpContractAddress}</p>
           {chainState !== undefined ? (
             <div>
               <p>
@@ -225,13 +227,19 @@ function App() {
                   CONFIG.baseToken.decimals
                 )}{" "}
                 {CONFIG.baseToken.name}
-                <MintButton
+                <DepositButton
                   web3={web3!}
                   sender={account!}
-                  erc20Address={CONFIG.baseToken.erc20Address}
-                  destination={CONFIG.swapContractAddress}
-                  qty={CONFIG.mintQty}
-                  decimals={CONFIG.baseToken.decimals}
+                  isBase={true}
+                  amount={CONFIG.depositQty}
+                />
+                <WithdrawAllButton
+                  web3={web3!}
+                  sender={account!}
+                  isBase={true}
+                  amount={tokenQtyToNumber(
+                    chainState.accountLPBalance, CONFIG.lpTokenDecimals
+                  )}
                 />
               </p>
               <p>
@@ -240,13 +248,19 @@ function App() {
                   CONFIG.quoteToken.decimals
                 )}{" "}
                 {CONFIG.quoteToken.name}
-                <MintButton
+                <DepositButton
                   web3={web3!}
                   sender={account!}
-                  erc20Address={CONFIG.quoteToken.erc20Address}
-                  destination={CONFIG.swapContractAddress}
-                  qty={CONFIG.mintQty}
-                  decimals={CONFIG.quoteToken.decimals}
+                  isBase={false}
+                  amount={CONFIG.depositQty}
+                />
+                <WithdrawAllButton
+                  web3={web3!}
+                  sender={account!}
+                  isBase={true}
+                  amount={tokenQtyToNumber(
+                    chainState.accountLPBalance, CONFIG.lpTokenDecimals
+                  )}
                 />
               </p>
             </div>
@@ -291,7 +305,7 @@ function App() {
             quoteToken={CONFIG.quoteToken}
             priceServiceUrl={CONFIG.priceServiceUrl}
             pythContractAddress={CONFIG.pythContractAddress}
-            swapContractAddress={CONFIG.swapContractAddress}
+            swapContractAddress={CONFIG.lpContractAddress}
           />
         </div>
       </div>

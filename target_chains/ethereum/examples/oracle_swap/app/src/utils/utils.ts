@@ -1,4 +1,5 @@
 import { BigNumber } from "ethers";
+import Web3 from "web3";
 
 export interface TokenConfig {
   name: string;
@@ -15,6 +16,7 @@ export interface ExchangeRateMeta {
 export interface ChainState {
   accountBaseBalance: BigNumber;
   accountQuoteBalance: BigNumber;
+  accountLPBalance: BigNumber;
   poolBaseBalance: BigNumber;
   poolQuoteBalance: BigNumber;
 }
@@ -57,4 +59,8 @@ export function tokenQtyToNumber(x: BigNumber, decimals: number): number {
   const divided = x.div(BigNumber.from(10).pow(decimals - 6));
 
   return divided.toNumber() / 1000000;
+}
+
+export const getContract = (web3: Web3, abi: any, contractAddress: string) => {
+  return new web3.eth.Contract(abi, contractAddress);
 }
