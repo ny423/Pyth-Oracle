@@ -206,27 +206,6 @@ contract OracleLP is ERC20 {
         return quoteToken.balanceOf(address(this));
     }
 
-    // Send all tokens in the oracle AMM pool to the caller of this method.
-    // (This function is for demo purposes only. You wouldn't include this on a real contract.)
-    function withdrawAll() external {
-        baseToken.transfer(msg.sender, baseToken.balanceOf(address(this)));
-        quoteToken.transfer(msg.sender, quoteToken.balanceOf(address(this)));
-    }
-
-    // Reinitialize the parameters of this contract.
-    // (This function is for demo purposes only. You wouldn't include this on a real contract.)
-    function reinitialize(
-        bytes32 _baseTokenPriceId,
-        bytes32 _quoteTokenPriceId,
-        address _baseToken,
-        address _quoteToken
-    ) external {
-        baseTokenPriceId = _baseTokenPriceId;
-        quoteTokenPriceId = _quoteTokenPriceId;
-        baseToken = ERC20(_baseToken);
-        quoteToken = ERC20(_quoteToken);
-    }
-
     event Mint(uint256 amount);
 
     function mint(address account, uint256 amount) internal {
